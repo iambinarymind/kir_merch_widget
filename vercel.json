@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/webhook/sales",
+      "destination": "/api/index"
+    }
+  ]
+}
