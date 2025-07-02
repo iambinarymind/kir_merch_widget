@@ -8,7 +8,7 @@
   "crons": [
     {
       "path": "/api/process_queue",
-      "schedule": "*/10 * * * * *"
+      "schedule": "* * * * *"
     }
   ]
 }
