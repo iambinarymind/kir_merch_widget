@@ -12,9 +12,10 @@ app = Flask(__name__)
 SE_ACCOUNT_ID = os.environ.get('SE_ACCOUNT_ID')
 SE_JWT_TOKEN = os.environ.get('SE_JWT_TOKEN')
 SE_PROVIDER_ID = os.environ.get('SE_PROVIDER_ID')
-SE_AMOUNT_STR = os.environ.get('SE_AMOUNT') # NEW: Amount from environment
-SE_DISPLAY_NAME = os.environ.get('SE_DISPLAY_NAME') # NEW: DisplayName from environment
-SE_USERNAME = os.environ.get('SE_USERNAME') # NEW: Username from environment
+SE_AMOUNT_STR = os.environ.get('SE_AMOUNT')
+SE_DISPLAY_NAME = os.environ.get('SE_DISPLAY_NAME')
+SE_USERNAME = os.environ.get('SE_USERNAME')
+SE_TYPE = os.environ.get('SE_TYPE') # NEW: Type from environment
 
 
 # StreamElements API endpoint
@@ -29,7 +30,7 @@ def handle_store_sale():
     # 1. Check if required environment variables are set
     required_vars = [
         SE_ACCOUNT_ID, SE_JWT_TOKEN, SE_PROVIDER_ID,
-        SE_AMOUNT_STR, SE_DISPLAY_NAME, SE_USERNAME
+        SE_AMOUNT_STR, SE_DISPLAY_NAME, SE_USERNAME, SE_TYPE
     ]
     if not all(required_vars):
         print("Error: One or more required environment variables are not set.")
@@ -58,18 +59,18 @@ def handle_store_sale():
     se_payload = {
         "createdAt": datetime.now(timezone.utc).isoformat(),
         "data": {
-            "amount": se_amount,  # UPDATED: Using environment variable
+            "amount": se_amount,
             "avatar": "https://cdn.streamelements.com/assets/dashboard/my-overlays/overlay-default-preview-2.jpg",
-            "displayName": SE_DISPLAY_NAME, # UPDATED: Using environment variable
-            "username": SE_USERNAME, # UPDATED: Using environment variable
+            "displayName": SE_DISPLAY_NAME,
+            "username": SE_USERNAME,
             "providerId": SE_PROVIDER_ID,
             "gifted": False,
             "message": message
         },
         "flagged": False,
         "provider": "twitch",
-        "isMock": True,  # This is fixed as per your request
-        "type": "tip"
+        "isMock": True,
+        "type": SE_TYPE
     }
 
     # 4. Prepare the headers for the StreamElements API request
@@ -103,5 +104,6 @@ if __name__ == "__main__":
     # export SE_AMOUNT='0.10'
     # export SE_DISPLAY_NAME='KirscheSale'
     # export SE_USERNAME='KirscheSale'
+    # export SE_TYPE='tip'
     # python api/index.py
     app.run(port=5000, debug=True)
