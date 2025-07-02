@@ -1,1 +1,1 @@
-Customized Hype Cup Widget Backend Script
+Customized Widget Backend Script
