@@ -106,8 +106,8 @@ if __name__ == "__main__":
     # export SE_JWT_TOKEN='your_jwt_token'
     # export SE_PROVIDER_ID='your_provider_id'
     # export SE_AMOUNT='0.10'
-    # export SE_DISPLAY_NAME='KirscheSale'
-    # export SE_USERNAME='KirscheSale'
-    # export SE_TYPE='tip'
+    # export SE_DISPLAY_NAME='your_display_name'
+    # export SE_USERNAME='your_username'
+    # export SE_TYPE='your_se_type'
     # python api/index.py
     app.run(port=5000, debug=True)
