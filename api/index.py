@@ -11,7 +11,11 @@ app = Flask(__name__)
 # In Vercel, you will set these in the project's "Environment Variables" settings.
 SE_ACCOUNT_ID = os.environ.get('SE_ACCOUNT_ID')
 SE_JWT_TOKEN = os.environ.get('SE_JWT_TOKEN')
-SE_PROVIDER_ID = os.environ.get('SE_PROVIDER_ID') # NEW: Provider ID from environment
+SE_PROVIDER_ID = os.environ.get('SE_PROVIDER_ID')
+SE_AMOUNT_STR = os.environ.get('SE_AMOUNT') # NEW: Amount from environment
+SE_DISPLAY_NAME = os.environ.get('SE_DISPLAY_NAME') # NEW: DisplayName from environment
+SE_USERNAME = os.environ.get('SE_USERNAME') # NEW: Username from environment
+
 
 # StreamElements API endpoint
 SE_API_URL = f"https://api.streamelements.com/kappa/v2/activities/{SE_ACCOUNT_ID}"
@@ -23,10 +27,22 @@ def handle_store_sale():
     and triggers a StreamElements widget overlay.
     """
     # 1. Check if required environment variables are set
-    if not SE_ACCOUNT_ID or not SE_JWT_TOKEN or not SE_PROVIDER_ID:
-        print("Error: StreamElements Account ID, JWT Token, or Provider ID not set in environment variables.")
+    required_vars = [
+        SE_ACCOUNT_ID, SE_JWT_TOKEN, SE_PROVIDER_ID,
+        SE_AMOUNT_STR, SE_DISPLAY_NAME, SE_USERNAME
+    ]
+    if not all(required_vars):
+        print("Error: One or more required environment variables are not set.")
         # Return a 500 error but don't break the flow for the store
         return jsonify({"status": "error", "message": "Server configuration incomplete"}), 500
+
+    # Convert amount to float, with error handling
+    try:
+        se_amount = float(SE_AMOUNT_STR)
+    except (ValueError, TypeError):
+        print(f"Error: Invalid format for SE_AMOUNT. Expected a number, but got '{SE_AMOUNT_STR}'.")
+        return jsonify({"status": "error", "message": "Invalid server configuration for amount"}), 500
+
 
     # 2. Get the JSON payload from the store webhook
     store_data = request.get_json()
@@ -35,18 +51,18 @@ def handle_store_sale():
 
     print("Received store sale data:", store_data)
 
-    # --- Message can be customized here ---
+    # --- You can customize the message here ---
     message = "Sale Detected!" # Default message
 
     # 3. Construct the payload for the StreamElements API
     se_payload = {
         "createdAt": datetime.now(timezone.utc).isoformat(),
         "data": {
-            "amount": 0.10,  # This value is fixed as per your request
+            "amount": se_amount,  # UPDATED: Using environment variable
             "avatar": "https://cdn.streamelements.com/assets/dashboard/my-overlays/overlay-default-preview-2.jpg",
-            "displayName": "KirscheSale",
-            "username": "KirscheSale",
-            "providerId": SE_PROVIDER_ID, # UPDATED: Using environment variable
+            "displayName": SE_DISPLAY_NAME, # UPDATED: Using environment variable
+            "username": SE_USERNAME, # UPDATED: Using environment variable
+            "providerId": SE_PROVIDER_ID,
             "gifted": False,
             "message": message
         },
@@ -84,5 +100,8 @@ if __name__ == "__main__":
     # export SE_ACCOUNT_ID='your_account_id'
     # export SE_JWT_TOKEN='your_jwt_token'
     # export SE_PROVIDER_ID='your_provider_id'
+    # export SE_AMOUNT='0.10'
+    # export SE_DISPLAY_NAME='KirscheSale'
+    # export SE_USERNAME='KirscheSale'
     # python api/index.py
     app.run(port=5000, debug=True)
