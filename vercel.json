@@ -4,11 +4,5 @@
       "source": "/webhook/sales",
       "destination": "/api/index"
     }
-  ],
-  "crons": [
-    {
-      "path": "/api/process_queue",
-      "schedule": "* * * * *"
-    }
   ]
 }
