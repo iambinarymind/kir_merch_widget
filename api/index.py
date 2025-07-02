@@ -52,11 +52,7 @@ def handle_store_sale():
 
     print("Received store sale data:", store_data)
 
-    # --- You can customize the message based on store data here ---
-    # For example, you could extract the customer's name or the total price.
-    # customer_name = store_data.get('customer', {}).get('first_name', 'A Customer')
-    # total_price = store_data.get('total_price', 'a certain amount')
-    # message = f"New sale from {customer_name} for ${total_price}!"
+    # --- You can customize the message here ---
     message = "Sale Detected!" # Default message
 
     # 3. Construct the payload for the StreamElements API
