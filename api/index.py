@@ -15,7 +15,7 @@ SE_PROVIDER_ID = os.environ.get('SE_PROVIDER_ID')
 SE_AMOUNT_STR = os.environ.get('SE_AMOUNT')
 SE_DISPLAY_NAME = os.environ.get('SE_DISPLAY_NAME')
 SE_USERNAME = os.environ.get('SE_USERNAME')
-SE_TYPE = os.environ.get('SE_TYPE') # NEW: Type from environment
+SE_TYPE = os.environ.get('SE_TYPE')
 
 
 # StreamElements API endpoint
