@@ -1,109 +1,52 @@
 import os
-import requests
+import redis
+import json
 from flask import Flask, request, jsonify
-from datetime import datetime, timezone
 
 # Initialize the Flask application
 app = Flask(__name__)
 
 # --- Configuration ---
-# Fetch sensitive data from environment variables for security.
-# In Vercel, you will set these in the project's "Environment Variables" settings.
-SE_ACCOUNT_ID = os.environ.get('SE_ACCOUNT_ID')
-SE_JWT_TOKEN = os.environ.get('SE_JWT_TOKEN')
-SE_PROVIDER_ID = os.environ.get('SE_PROVIDER_ID')
-SE_AMOUNT_STR = os.environ.get('SE_AMOUNT')
-SE_DISPLAY_NAME = os.environ.get('SE_DISPLAY_NAME')
-SE_USERNAME = os.environ.get('SE_USERNAME')
-SE_TYPE = os.environ.get('SE_TYPE')
+# Vercel KV (Redis) connection details are automatically provided by Vercel
+# when you connect a KV store to your project.
+try:
+    redis_client = redis.from_url(os.environ.get("KV_URL"))
+except redis.exceptions.ConnectionError as e:
+    print(f"Could not connect to Vercel KV (Redis): {e}")
+    redis_client = None
 
-
-# StreamElements API endpoint
-SE_API_URL = f"https://api.streamelements.com/kappa/v2/activities/{SE_ACCOUNT_ID}"
+# The key we will use in Redis for our queue list.
+SALE_QUEUE_KEY = "sale_alert_queue"
 
 @app.route('/webhook/sales', methods=['POST'])
 def handle_store_sale():
     """
-    This endpoint receives a webhook from a store, processes the data,
-    and triggers a StreamElements widget overlay.
+    This endpoint receives a webhook from a store and adds the sale
+    data to a queue in Vercel KV for later processing.
     """
-    # 1. Check if required environment variables are set
-    required_vars = [
-        SE_ACCOUNT_ID, SE_JWT_TOKEN, SE_PROVIDER_ID,
-        SE_AMOUNT_STR, SE_DISPLAY_NAME, SE_USERNAME, SE_TYPE
-    ]
-    if not all(required_vars):
-        print("Error: One or more required environment variables are not set.")
-        # Return a 500 error but don't break the flow for the store
+    if not redis_client:
+        print("Error: Vercel KV not connected. Cannot queue sale.")
         return jsonify({"status": "error", "message": "Server configuration incomplete"}), 500
 
-    # Convert amount to float, with error handling
-    try:
-        se_amount = float(SE_AMOUNT_STR)
-    except (ValueError, TypeError):
-        print(f"Error: Invalid format for SE_AMOUNT. Expected a number, but got '{SE_AMOUNT_STR}'.")
-        return jsonify({"status": "error", "message": "Invalid server configuration for amount"}), 500
-
-
-    # 2. Get the JSON payload from the store webhook
+    # 1. Get the JSON payload from the store webhook
     store_data = request.get_json()
     if not store_data:
         return jsonify({"status": "error", "message": "No data received"}), 400
 
-    print("Received store sale data:", store_data)
+    print("Received store sale data, adding to queue:", store_data)
 
-    # --- You can customize the message here ---
-    message = "Sale Detected!" # Default message
-
-    # 3. Construct the payload for the StreamElements API
-    se_payload = {
-        "createdAt": datetime.now(timezone.utc).isoformat(),
-        "data": {
-            "amount": se_amount,
-            "avatar": "https://cdn.streamelements.com/assets/dashboard/my-overlays/overlay-default-preview-2.jpg",
-            "displayName": SE_DISPLAY_NAME,
-            "username": SE_USERNAME,
-            "providerId": SE_PROVIDER_ID,
-            "gifted": False,
-            "message": message
-        },
-        "flagged": False,
-        "provider": "twitch",
-        "isMock": True,
-        "type": SE_TYPE
-    }
-
-    # 4. Prepare the headers for the StreamElements API request
-    se_headers = {
-        "Authorization": f"Bearer {SE_JWT_TOKEN}",
-        "Content-Type": "application/json"
-    }
-
-    # 5. Send the request to StreamElements
+    # 2. Add the sale data to the end of the list (queue) in Redis
     try:
-        print("Sending payload to StreamElements...")
-        response = requests.post(SE_API_URL, headers=se_headers, json=se_payload)
-        response.raise_for_status()  # This will raise an exception for HTTP error codes (4xx or 5xx)
-        print(f"StreamElements API response: {response.status_code} - {response.text}")
+        # We store the data as a JSON string
+        redis_client.rpush(SALE_QUEUE_KEY, json.dumps(store_data))
+    except redis.exceptions.RedisError as e:
+        print(f"Error adding sale to queue: {e}")
+        return jsonify({"status": "error", "message": "Failed to queue sale notification"}), 500
 
-    except requests.exceptions.RequestException as e:
-        print(f"Error sending request to StreamElements: {e}")
-        # Even if this fails, we will still send a 200 OK to the store below.
-
-    # 6. ALWAYS respond to the store with a 200 OK to acknowledge receipt.
-    # If you don't, the store will consider the webhook failed and will retry.
-    return jsonify({"status": "success", "message": "Webhook received"}), 200
+    # 3. ALWAYS respond to the store with a 200 OK to acknowledge receipt.
+    return jsonify({"status": "success", "message": "Sale queued for processing"}), 200
 
 # This allows the script to be run locally for testing if needed
 if __name__ == "__main__":
-    # To run this locally, you would need to set the environment variables first.
-    # Example (in bash/zsh):
-    # export SE_ACCOUNT_ID='your_account_id'
-    # export SE_JWT_TOKEN='your_jwt_token'
-    # export SE_PROVIDER_ID='your_provider_id'
-    # export SE_AMOUNT='0.10'
-    # export SE_DISPLAY_NAME='KirscheSale'
-    # export SE_USERNAME='KirscheSale'
-    # export SE_TYPE='tip'
-    # python api/index.py
+    # Note: Local testing would require a running Redis instance and KV_URL env var.
     app.run(port=5000, debug=True)
